@@ -1,0 +1,19 @@
+# Python / Django
+__pycache__/
+*.pyc
+db.sqlite3
+.base_db.sqlite3
+.env
+.venv/
+venv/
+env/
+
+# IDEs
+.vscode/
+.idea/
+
+# Node
+node_modules/
+
+# OS
+.DS_Store
