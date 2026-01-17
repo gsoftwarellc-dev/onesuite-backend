@@ -1,4 +1,252 @@
 from django.db import models
+from django.contrib.auth import get_user_model
+from django.core.exceptions import ValidationError
+from django.db.models import Q
 
-# Create your models here.
-# TODO: Implement commission models (e.g. CommissionEntry, CommissionClaim)
+User = get_user_model()
+
+
+class Commission(models.Model):
+    """
+    Unified model for base commissions, manager overrides, and adjustments.
+    
+    Business Rules:
+    - Base commissions have consultant but no manager
+    - Override commissions have both consultant and manager
+    - Adjustments reference original commission via adjustment_for
+    - State transitions are validated (draft → submitted → approved → paid)
+    - Once paid, commission is immutable (corrections via adjustments)
+    """
+    
+    COMMISSION_TYPE_CHOICES = [
+        ('base', 'Base Commission'),
+        ('override', 'Manager Override'),
+        ('adjustment', 'Adjustment'),
+    ]
+    
+    STATE_CHOICES = [
+        ('draft', 'Draft'),
+        ('submitted', 'Submitted'),
+        ('approved', 'Approved'),
+        ('paid', 'Paid'),
+        ('rejected', 'Rejected'),
+    ]
+    
+    # Core fields
+    commission_type = models.CharField(
+        max_length=20,
+        choices=COMMISSION_TYPE_CHOICES,
+        db_index=True,
+        help_text="Type of commission"
+    )
+    
+    consultant = models.ForeignKey(
+        User,
+        on_delete=models.PROTECT,
+        related_name='commissions_earned',
+        help_text="User who earned this commission"
+    )
+    
+    manager = models.ForeignKey(
+        User,
+        on_delete=models.PROTECT,
+        related_name='override_commissions',
+        null=True,
+        blank=True,
+        help_text="For overrides: manager at time of transaction (denormalized for immutability)"
+    )
+    
+    # Transaction details
+    transaction_date = models.DateField(
+        help_text="When the sale/transaction occurred"
+    )
+    
+    sale_amount = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        help_text="Sale value excluding GST"
+    )
+    
+    gst_rate = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        default=0,
+        help_text="GST percentage at transaction time (e.g., 10.00)"
+    )
+    
+    commission_rate = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        help_text="Commission percentage applied (e.g., 7.00 for 7%)"
+    )
+    
+    calculated_amount = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        help_text="Final commission amount (immutable once approved)"
+    )
+    
+    # State and workflow
+    state = models.CharField(
+        max_length=20,
+        choices=STATE_CHOICES,
+        default='draft',
+        db_index=True,
+        help_text="Current state in lifecycle"
+    )
+    
+    reference_number = models.CharField(
+        max_length=50,
+        unique=True,
+        help_text="External transaction reference (e.g., invoice number)"
+    )
+    
+    notes = models.TextField(
+        blank=True,
+        help_text="Additional notes or context"
+    )
+    
+    # Future: Product support
+    # product = models.ForeignKey('products.Product', null=True, blank=True, on_delete=models.SET_NULL)
+    
+    # Override-specific fields
+    override_level = models.IntegerField(
+        null=True,
+        blank=True,
+        help_text="For overrides: 1=direct manager, 2=senior manager, etc."
+    )
+    
+    parent_commission = models.ForeignKey(
+        'self',
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name='related_commissions',
+        help_text="For overrides: links to base commission"
+    )
+    
+    # Adjustment-specific fields
+    adjustment_for = models.ForeignKey(
+        'self',
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name='adjustments',
+        help_text="For adjustments: original commission being corrected"
+    )
+    
+    # Future: Payout support (Phase 4)
+    # payout_batch = models.ForeignKey('payouts.PayoutBatch', null=True, blank=True, on_delete=models.PROTECT)
+    
+    # Audit fields
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='commissions_created',
+        help_text="Who created this commission"
+    )
+    
+    approved_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='commissions_approved',
+        help_text="Admin who approved this commission"
+    )
+    
+    approved_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="When approved"
+    )
+    
+    paid_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="When payment was processed"
+    )
+    
+    rejection_reason = models.TextField(
+        blank=True,
+        help_text="Reason for rejection (if state=rejected)"
+    )
+    
+    class Meta:
+        db_table = 'commissions_commission'
+        ordering = ['-transaction_date', '-created_at']
+        indexes = [
+            models.Index(fields=['consultant', 'state']),
+            models.Index(fields=['manager', 'state', 'commission_type']),
+            models.Index(fields=['transaction_date', 'state']),
+            models.Index(fields=['state', 'created_at']),
+        ]
+        constraints = [
+            # Base commissions should not have manager
+            models.CheckConstraint(
+                check=(
+                    Q(commission_type='base', manager__isnull=True) |
+                    ~Q(commission_type='base')
+                ),
+                name='base_no_manager'
+            ),
+            # Override must have manager
+            models.CheckConstraint(
+                check=(
+                    Q(commission_type='override', manager__isnull=False) |
+                    ~Q(commission_type='override')
+                ),
+                name='override_has_manager'
+            ),
+            # Adjustment must reference original
+            models.CheckConstraint(
+                check=(
+                    Q(commission_type='adjustment', adjustment_for__isnull=False) |
+                    ~Q(commission_type='adjustment')
+                ),
+                name='adjustment_has_reference'
+            ),
+            # Cannot approve own commission
+            models.CheckConstraint(
+                check=~Q(consultant=models.F('approved_by')),
+                name='cannot_approve_own'
+            ),
+        ]
+    
+    def __str__(self):
+        type_label = dict(self.COMMISSION_TYPE_CHOICES).get(self.commission_type, self.commission_type)
+        return f"{type_label} - {self.consultant.username} - ${self.calculated_amount} ({self.state})"
+    
+    def clean(self):
+        """Validate business rules"""
+        # Base commission validation
+        if self.commission_type == 'base' and self.manager is not None:
+            raise ValidationError("Base commissions should not have a manager assigned.")
+        
+        # Override validation
+        if self.commission_type == 'override' and self.manager is None:
+            raise ValidationError("Override commissions must have a manager assigned.")
+        
+        # Adjustment validation
+        if self.commission_type == 'adjustment' and self.adjustment_for is None:
+            raise ValidationError("Adjustment commissions must reference the original commission.")
+        
+        # State validation for paid commissions
+        if self.pk and self.state == 'paid':
+            # Check if state changed from paid (not allowed)
+            old_instance = Commission.objects.get(pk=self.pk)
+            if old_instance.state == 'paid' and self.state != 'paid':
+                raise ValidationError("Cannot modify a commission that has been paid.")
+        
+        # Cannot approve own commission
+        if self.approved_by and self.consultant == self.approved_by:
+            raise ValidationError("A user cannot approve their own commission.")
+    
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)
