@@ -2,6 +2,7 @@ from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from decimal import Decimal
 from .models import Commission
+from .services import CommissionCalculationService
 
 User = get_user_model()
 
@@ -82,15 +83,17 @@ class CommissionCreateSerializer(serializers.ModelSerializer):
         calculated_amount = attrs.get('calculated_amount')
         
         # Sanity check: calculated amount should be reasonable
-        expected_amount = sale_amount * (commission_rate / Decimal('100.0'))
+        expected_amount = CommissionCalculationService.calculate_base_commission(
+            sale_amount, commission_rate, attrs.get('gst_rate', 0)
+        )
         tolerance = Decimal('0.01')  # Allow 1 cent difference for rounding
         
         if abs(calculated_amount - expected_amount) > tolerance:
             raise serializers.ValidationError({
                 "calculated_amount": (
                     f"Calculated amount ({calculated_amount}) does not match "
-                    f"expected value ({expected_amount:.2f}) based on sale amount "
-                    f"and commission rate."
+                    f"expected value ({expected_amount}) based on sale amount "
+                    f"and commission rate (after GST exclusion)."
                 )
             })
         
