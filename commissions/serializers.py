@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from decimal import Decimal
-from .models import Commission
+from .models import Commission, CommissionApproval, ApprovalHistory
 from .services import CommissionCalculationService
 
 User = get_user_model()
@@ -111,6 +111,13 @@ class CommissionReadSerializer(serializers.ModelSerializer):
     manager = UserBasicSerializer(read_only=True)
     created_by = UserBasicSerializer(read_only=True)
     approved_by = UserBasicSerializer(read_only=True)
+    approval = serializers.SerializerMethodField()
+    
+    def get_approval(self, obj):
+        try:
+            return CommissionApprovalSerializer(obj.approval).data
+        except (CommissionApproval.DoesNotExist, AttributeError):
+            return None
     
     class Meta:
         model = Commission
@@ -137,6 +144,7 @@ class CommissionReadSerializer(serializers.ModelSerializer):
             'approved_at',
             'paid_at',
             'rejection_reason',
+            'approval',
         ]
         read_only_fields = fields
 
@@ -289,20 +297,43 @@ class StateTransitionSerializer(serializers.Serializer):
         return attrs
 
 
-class BulkCommissionCreateSerializer(serializers.Serializer):
-    """
-    Serializer for bulk commission creation.
-    
-    Accepts a list of commission data.
-    """
-    commissions = CommissionCreateSerializer(many=True)
-    
-    def validate_commissions(self, value):
-        """Validate bulk creation limits"""
-        if len(value) > 100:
-            raise serializers.ValidationError("Cannot create more than 100 commissions at once.")
-        
-        if len(value) == 0:
-            raise serializers.ValidationError("At least one commission is required.")
-        
         return value
+
+
+class ApprovalHistorySerializer(serializers.ModelSerializer):
+    """Serializer for chronological audit log entries"""
+    actor = UserBasicSerializer(read_only=True)
+    
+    class Meta:
+        model = ApprovalHistory
+        fields = ['id', 'action', 'actor', 'from_state', 'to_state', 'notes', 'timestamp']
+        read_only_fields = fields
+
+
+class CommissionApprovalSerializer(serializers.ModelSerializer):
+    """Serializer for the overall approval workflow state"""
+    assigned_approver = UserBasicSerializer(read_only=True)
+    history = ApprovalHistorySerializer(many=True, read_only=True)
+    
+    class Meta:
+        model = CommissionApproval
+        fields = [
+            'id', 'assigned_approver', 'assigned_role', 
+            'is_auto_approved', 'created_at', 'updated_at', 'history'
+        ]
+        read_only_fields = fields
+
+
+class ApprovalActionBaseSerializer(serializers.Serializer):
+    """Base for workflow action serializers"""
+    notes = serializers.CharField(required=False, allow_blank=True)
+
+
+class ApprovalRejectSerializer(ApprovalActionBaseSerializer):
+    """Validation for rejection - requires reason"""
+    rejection_reason = serializers.CharField(required=True, min_length=5)
+
+
+class ApprovalPaySerializer(ApprovalActionBaseSerializer):
+    """Validation for marking as paid"""
+    paid_at = serializers.DateTimeField(required=False, allow_null=True)
