@@ -64,7 +64,7 @@ gcloud run deploy "$SERVICE_NAME" \
   --project "$PROJECT_ID" \
   --region "$REGION" \
   --source . \
-  --add-cloudsql-instances "$DB_INSTANCE_CONNECTION_NAME" \
+  --set-cloudsql-instances "$DB_INSTANCE_CONNECTION_NAME" \
   --platform managed \
   --allow-unauthenticated \
   --set-env-vars "DEBUG=False" \
@@ -72,9 +72,7 @@ gcloud run deploy "$SERVICE_NAME" \
   --set-env-vars "DB_NAME=$DB_NAME" \
   --set-env-vars "DB_USER=$DB_USER" \
   --set-env-vars "DB_HOST=/cloudsql/$DB_INSTANCE_CONNECTION_NAME" \
-  --set-env-vars "ALLOWED_HOSTS=*" \
-  --set-env-vars "DB_PASSWORD=$DB_PASSWORD" \
-  --set-env-vars "SECRET_KEY=$SECRET_KEY"
+  --set-env-vars "ALLOWED_HOSTS=*"
 
 echo "========================================================"
 echo "DEPLOYMENT COMPLETE!"

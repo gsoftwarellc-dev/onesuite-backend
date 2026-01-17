@@ -39,14 +39,12 @@ gcloud run jobs deploy "$JOB_NAME" \
   --project "$PROJECT_ID" \
   --region "$REGION" \
   --source . \
-  --add-cloudsql-instances "$DB_INSTANCE_CONNECTION_NAME" \
+  --set-cloudsql-instances "$DB_INSTANCE_CONNECTION_NAME" \
   --set-env-vars "DEBUG=False" \
   --set-env-vars "DB_ENGINE=django.db.backends.postgresql" \
   --set-env-vars "DB_NAME=$DB_NAME" \
   --set-env-vars "DB_USER=$DB_USER" \
   --set-env-vars "DB_HOST=/cloudsql/$DB_INSTANCE_CONNECTION_NAME" \
-  --set-env-vars "DB_PASSWORD=$DB_PASSWORD" \
-  --set-env-vars "SECRET_KEY=$SECRET_KEY" \
   --command "python" \
   --args "manage.py,migrate"
 
