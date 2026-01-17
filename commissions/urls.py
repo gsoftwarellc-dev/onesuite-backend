@@ -1,5 +1,6 @@
-from django.urls import path
+from django.urls import path, include
 from . import views
+from .approvals import views as approval_views
 
 urlpatterns = [
     # Commission creation
@@ -12,15 +13,18 @@ urlpatterns = [
     path('', views.all_commissions, name='all-commissions'),  # Admin only
     path('<int:pk>/', views.commission_detail, name='commission-detail'),
     
-    # State transitions
-    path('<int:pk>/submit/', views.submit_commission, name='submit-commission'),
-    path('<int:pk>/approve/', views.approve_commission, name='approve-commission'),
-    path('<int:pk>/reject/', views.reject_commission, name='reject-commission'),
-    path('<int:pk>/mark-paid/', views.mark_paid, name='mark-paid'),
+    # Approval Workflows (Phase 3)
+    path('approvals/pending/', approval_views.PendingApprovalsListView.as_view(), name='approvals-pending'),
+    path('<int:pk>/approval/', approval_views.CommissionApprovalDetailView.as_view(), name='commission-approval-detail'),
+    path('<int:pk>/submit/', approval_views.CommissionSubmitView.as_view(), name='commission-submit'),
+    path('<int:pk>/approve/', approval_views.CommissionApproveView.as_view(), name='commission-approve'),
+    path('<int:pk>/reject/', approval_views.CommissionRejectView.as_view(), name='commission-reject'),
+    path('<int:pk>/mark-paid/', approval_views.CommissionPayView.as_view(), name='commission-mark-paid'),
+    path('<int:pk>/timeline/', approval_views.CommissionTimelineView.as_view(), name='commission-timeline'),
     
-    # Adjustments
+    # Adjustments (Phase 2 legacy history replaced by timeline above, but keeping for now if needed)
     path('<int:pk>/adjust/', views.create_adjustment, name='create-adjustment'),
-    path('<int:pk>/history/', views.commission_history, name='commission-history'),
+    path('<int:pk>/history/', views.commission_history, name='commission-history'), # Legacy, consider removal
     
     # Summary/Dashboard
     path('summary/', views.commission_summary, name='commission-summary'),
