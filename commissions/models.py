@@ -250,3 +250,112 @@ class Commission(models.Model):
     def save(self, *args, **kwargs):
         self.full_clean()
         super().save(*args, **kwargs)
+
+
+class CommissionApproval(models.Model):
+    """
+    Manages the current state of the approval workflow for a commission.
+    
+    Preserves the assigned approver to handle hierarchy changes gracefully.
+    """
+    ROLE_CHOICES = [
+        ('MANAGER', 'Manager'),
+        ('ADMIN', 'Admin/Director'),
+    ]
+    
+    commission = models.OneToOneField(
+        Commission,
+        on_delete=models.CASCADE,
+        related_name='approval',
+        help_text="The commission this approval workflow belongs to"
+    )
+    
+    assigned_approver = models.ForeignKey(
+        User,
+        on_delete=models.PROTECT,
+        related_name='assigned_approvals',
+        null=True,  # Initially null for drafts, set on submission
+        blank=True,
+        help_text="The user specialized for this approval step (manager/admin)"
+    )
+    
+    assigned_role = models.CharField(
+        max_length=20,
+        choices=ROLE_CHOICES,
+        default='MANAGER',
+        help_text="Required role level for this approval"
+    )
+    
+    is_auto_approved = models.BooleanField(
+        default=False,
+        help_text="Whether this was approved by a system rule"
+    )
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        db_table = 'commissions_approval'
+        verbose_name = 'Commission Approval'
+        verbose_name_plural = 'Commission Approvals'
+    
+    def __str__(self):
+        return f"Approval for {self.commission.reference_number} ({self.commission.state})"
+
+
+class ApprovalHistory(models.Model):
+    """
+    Immutable audit log for all approval actions taken on a commission.
+    """
+    ACTION_CHOICES = [
+        ('SUBMIT', 'Submitted'),
+        ('APPROVE', 'Approved'),
+        ('REJECT', 'Rejected'),
+        ('PAID', 'Marked as Paid'),
+    ]
+    
+    approval_record = models.ForeignKey(
+        CommissionApproval,
+        on_delete=models.CASCADE,
+        related_name='history',
+        help_text="The parent approval workflow record"
+    )
+    
+    action = models.CharField(
+        max_length=20,
+        choices=ACTION_CHOICES,
+        help_text="The action taken (Submit, Approve, Reject, Paid)"
+    )
+    
+    actor = models.ForeignKey(
+        User,
+        on_delete=models.PROTECT,
+        related_name='approval_actions',
+        help_text="The user who performed the action"
+    )
+    
+    from_state = models.CharField(
+        max_length=20,
+        help_text="State before action"
+    )
+    
+    to_state = models.CharField(
+        max_length=20,
+        help_text="State after action"
+    )
+    
+    notes = models.TextField(
+        blank=True,
+        help_text="Notes or rejection reasons"
+    )
+    
+    timestamp = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        db_table = 'commissions_approval_history'
+        verbose_name = 'Approval History'
+        verbose_name_plural = 'Approval Histories'
+        ordering = ['timestamp']
+    
+    def __str__(self):
+        return f"{self.action} by {self.actor.username} at {self.timestamp}"
