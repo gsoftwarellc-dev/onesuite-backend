@@ -51,9 +51,9 @@ echo "========================================================"
 echo "Deploying $SERVICE_NAME to $REGION (Project: $PROJECT_ID)"
 echo "========================================================"
 
-# 1. Pull latest code
-echo "[1/2] Pulling latest code from git..."
-git pull origin main || echo "Git pull failed (maybe no remote?), continuing..."
+# 1. Pull latest code (SKIPPED: Deploying local changes)
+# echo "[1/2] Pulling latest code from git..."
+# git pull origin main || echo "Git pull failed (maybe no remote?), continuing..."
 
 # 2. Deploy to Cloud Run
 echo "[2/2] Deploying to Cloud Run..."

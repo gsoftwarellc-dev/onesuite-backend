@@ -14,7 +14,7 @@ COPY . ./
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Collect static files
-RUN python manage.py collectstatic --noinput
+RUN SECRET_KEY=dummy python manage.py collectstatic --noinput
 
 # Run the web service on container startup. Here we use the gunicorn
 # webserver, with one worker process and 8 threads.

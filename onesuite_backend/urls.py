@@ -8,6 +8,13 @@ from rest_framework.permissions import AllowAny
 @api_view(['GET'])
 @permission_classes([AllowAny])
 def health_check(request):
+    from django.db import connections
+    from django.db.utils import OperationalError
+    try:
+        db_conn = connections['default']
+        db_conn.cursor()
+    except OperationalError:
+        return HttpResponse("DB Error", status=503)
     return HttpResponse("OK")
 
 urlpatterns = [
