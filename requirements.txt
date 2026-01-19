@@ -7,3 +7,4 @@ gunicorn
 whitenoise
 djangorestframework-simplejwt
 django-filter
+cryptography
