@@ -24,6 +24,7 @@ class CommissionCreateSerializer(serializers.ModelSerializer):
     """
     consultant_id = serializers.IntegerField(write_only=True)
     
+    
     class Meta:
         model = Commission
         fields = [
@@ -98,6 +99,14 @@ class CommissionCreateSerializer(serializers.ModelSerializer):
             })
         
         return attrs
+
+
+class BulkCommissionCreateSerializer(serializers.Serializer):
+    """
+    Serializer for bulk commission creation.
+    Allows creating multiple commissions in one transaction.
+    """
+    commissions = CommissionCreateSerializer(many=True)
 
 
 class CommissionReadSerializer(serializers.ModelSerializer):
