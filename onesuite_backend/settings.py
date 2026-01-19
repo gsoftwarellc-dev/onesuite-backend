@@ -41,6 +41,7 @@ INSTALLED_APPS = [
     'commissions',
     'approvals',
     'payouts',
+    'payments',
 ]
 
 MIDDLEWARE = [
