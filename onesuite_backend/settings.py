@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     'approvals',
     'payouts',
     'payments',
+    'analytics',
 ]
 
 MIDDLEWARE = [
@@ -173,6 +174,12 @@ REST_FRAMEWORK = {
     'DEFAULT_FILTER_BACKENDS': [
         'django_filters.rest_framework.DjangoFilterBackend',
     ],
+    'DEFAULT_THROTTLE_RATES': {
+        'analytics_dashboard': '60/min',
+        'analytics_metrics': '60/min',
+        'analytics_export': '10/min',
+    },
+    'EXCEPTION_HANDLER': 'analytics.throttling.analytics_exception_handler',
 }
 
 # Simple JWT Settings
