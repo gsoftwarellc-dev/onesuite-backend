@@ -14,17 +14,12 @@ class UserAdmin(BaseUserAdmin):
         ('OneSuite Fields', {'fields': ('role', 'is_manager')}),
     )
     
-    # Override add_fieldsets to include email
+    # Override add_fieldsets to include email and role
     add_fieldsets = (
         (None, {
             'classes': ('wide',),
-            'fields': ('username', 'email'),
+            'fields': ('username', 'email', 'password1', 'password2', 'role', 'is_manager'),
         }),
-        (None, {
-            'classes': ('wide',),
-            'fields': ('password', 'confirm_password'),
-        }),
-        ('OneSuite Fields', {'fields': ('role', 'is_manager')}),
     )
     list_display = ['username', 'email', 'role', 'is_manager', 'is_staff', 'is_active']
     list_filter = BaseUserAdmin.list_filter + ('role',)
