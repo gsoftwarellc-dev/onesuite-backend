@@ -104,10 +104,8 @@ class FinanceDashboardService:
         
         # Outstanding liability (approved but unpaid commissions) - real-time
         outstanding = Commission.objects.filter(
-            status='APPROVED'
-        ).exclude(
-            id__in=Payout.objects.filter(status='PAID').values_list('id', flat=True)
-        ).aggregate(total=Coalesce(Sum('amount'), Decimal('0')))['total']
+            state='approved'
+        ).aggregate(total=Coalesce(Sum('calculated_amount'), Decimal('0')))['total']
         
         # Payment success rate
         latest_summary = PayoutSummary.objects.filter(
@@ -244,7 +242,7 @@ class ManagerDashboardService:
         # Pending approvals (real-time from commissions)
         pending_approvals = Commission.objects.filter(
             consultant_id__in=team_ids,
-            status='SUBMITTED'
+            state='submitted'
         ).count()
         
         return {
@@ -335,8 +333,8 @@ class ConsultantDashboardService:
         # Pending amount (real-time)
         pending = Commission.objects.filter(
             consultant=user,
-            status__in=['SUBMITTED', 'PENDING']
-        ).aggregate(total=Coalesce(Sum('amount'), Decimal('0')))['total']
+            state__in=['submitted', 'approved']
+        ).aggregate(total=Coalesce(Sum('calculated_amount'), Decimal('0')))['total']
         
         # W-9 status
         w9 = W9Information.objects.filter(consultant=user).first()
@@ -697,7 +695,7 @@ class CommissionDetailExportService(BaseExportService):
                     query &= Q(consultant=user)
             
             if status:
-                query &= Q(status=status)
+                query &= Q(state=status)
             
             # Check count
             count = Commission.objects.filter(query).count()
@@ -712,10 +710,10 @@ class CommissionDetailExportService(BaseExportService):
                     c.id,
                     c.created_at.date().isoformat(),
                     f"{c.consultant.first_name} {c.consultant.last_name[:1]}.",
-                    str(c.amount),
+                    str(c.calculated_amount),
                     c.commission_type,
-                    c.status,
-                    c.description[:50] if c.description else ''
+                    c.state,
+                    c.notes[:50] if c.notes else ''
                 ]
                 for c in commissions
             ]
@@ -879,10 +877,10 @@ class MyEarningsExportService(BaseExportService):
             rows = [
                 [
                     c.created_at.date().isoformat(),
-                    str(c.amount),
+                    str(c.calculated_amount),
                     c.commission_type,
-                    c.status,
-                    c.description[:50] if c.description else ''
+                    c.state,
+                    c.notes[:50] if c.notes else ''
                 ]
                 for c in commissions
             ]
