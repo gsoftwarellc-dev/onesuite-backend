@@ -57,7 +57,9 @@ def build_metrics_cache_key(model: str, **params) -> str:
 
 def is_finance_or_admin(user) -> bool:
     """Check if user has finance or admin role."""
-    return user.is_staff or user.is_superuser or getattr(user, 'role', None) in ['FINANCE', 'ADMIN']
+    role = getattr(user, 'role', '')
+    role_value = role.lower() if isinstance(role, str) else role
+    return user.is_staff or user.is_superuser or role_value in ['finance', 'admin']
 
 
 def is_manager(user) -> bool:
