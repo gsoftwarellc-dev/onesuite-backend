@@ -64,12 +64,23 @@ def is_finance_or_admin(user) -> bool:
 
 def is_manager(user) -> bool:
     """Check if user is a manager (has direct reports)."""
-    return ReportingLine.objects.filter(manager=user).exists()
+    role = getattr(user, 'role', '')
+    role_value = role.lower().strip() if isinstance(role, str) else role
+    if user.is_staff or user.is_superuser:
+        return True
+    if role_value in ['manager', 'admin']:
+        return True
+    if getattr(user, 'is_manager', False):
+        return True
+    return ReportingLine.objects.filter(manager=user, is_active=True).exists()
 
 
 def get_team_member_ids(manager) -> List[int]:
     """Get IDs of all team members for a manager."""
-    return list(ReportingLine.objects.filter(manager=manager).values_list('consultant_id', flat=True))
+    return list(
+        ReportingLine.objects.filter(manager=manager, is_active=True)
+        .values_list('consultant_id', flat=True)
+    )
 
 
 # =============================================================================

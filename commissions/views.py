@@ -222,8 +222,17 @@ def my_team_commissions(request):
     is_manager = ReportingLine.objects.filter(
         manager=request.user, is_active=True
     ).exists()
+    role = getattr(request.user, 'role', '')
+    role_value = role.lower().strip() if isinstance(role, str) else role
+    has_manager_access = (
+        request.user.is_staff
+        or request.user.is_superuser
+        or role_value in ['manager', 'admin']
+        or getattr(request.user, 'is_manager', False)
+        or is_manager
+    )
     
-    if not is_manager and not request.user.is_staff:
+    if not has_manager_access:
         return Response(
             {"detail": "You do not have team members."},
             status=status.HTTP_403_FORBIDDEN
