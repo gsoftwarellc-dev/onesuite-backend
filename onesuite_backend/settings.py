@@ -168,7 +168,11 @@ AUTHENTICATION_BACKENDS = [
 ]
 
 # CORS Settings
-CORS_ALLOWED_ORIGINS = config('CORS_ALLOWED_ORIGINS', default='http://localhost:3000', cast=Csv())
+CORS_ALLOWED_ORIGINS = config(
+    'CORS_ALLOWED_ORIGINS', 
+    default='http://localhost:3000,http://localhost:3001,https://onesuite-frontend-xmt742ralq-as.a.run.app', 
+    cast=Csv()
+)
 
 # DRF Settings (Project level)
 REST_FRAMEWORK = {
