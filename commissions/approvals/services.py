@@ -118,7 +118,7 @@ class ApprovalDecisionService:
         is_explicit_manager = commission.manager == actor
         
         if not is_admin and not is_hierarchy_manager and not is_explicit_manager and (not approval_record or approval_record.assigned_approver != actor):
-            raise ApprovalError("You are not authorized to approve this commission.")
+            raise ApprovalError(f"Auth Denied. Admin:{is_admin}, Hier:{is_hierarchy_manager}, Expl:{is_explicit_manager}, Actor:{actor.username}, Cons:{commission.consultant.username}")
             
         history = ApprovalStateService.record_action(
             commission, 'APPROVE', actor, 'approved', notes
