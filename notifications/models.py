@@ -64,6 +64,10 @@ class EventType(models.TextChoices):
     # System Events
     SYS_001 = 'SYS_001', 'Aggregation Job Failed'
     SYS_002 = 'SYS_002', 'Export Ready'
+    # Commission Events
+    COMM_001 = 'COMM_001', 'Commission Submitted'
+    COMM_002 = 'COMM_002', 'Commission Approved'
+    COMM_003 = 'COMM_003', 'Commission Rejected'
 
 
 # =============================================================================

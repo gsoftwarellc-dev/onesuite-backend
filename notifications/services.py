@@ -96,6 +96,21 @@ EMAIL_TEMPLATES = {
         'template': 'notifications/export_ready.html',
         'priority': NotificationPriority.NORMAL,
     },
+    EventType.COMM_001: {
+        'subject': 'New Commission Submitted: ${reference}',
+        'template': None, # Fallback to text
+        'priority': NotificationPriority.HIGH,
+    },
+    EventType.COMM_002: {
+        'subject': 'Commission Approved: ${reference}',
+        'template': None,
+        'priority': NotificationPriority.NORMAL,
+    },
+    EventType.COMM_003: {
+        'subject': 'Commission Rejected: ${reference}',
+        'template': None,
+        'priority': NotificationPriority.HIGH,
+    },
 }
 
 
