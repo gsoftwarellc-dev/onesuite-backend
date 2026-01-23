@@ -211,7 +211,7 @@ class CommissionCreationService:
             gst_rate=gst_rate,
             commission_rate=commission_rate,
             calculated_amount=calculated_amount,
-            state='draft',
+            state='submitted',
             reference_number=reference_number,
             notes=notes,
             created_by=created_by
@@ -239,7 +239,7 @@ class CommissionCreationService:
                 gst_rate=gst_rate,
                 commission_rate=override_rate,
                 calculated_amount=override_amount,
-                state='draft',
+                state='submitted',
                 reference_number=f"{reference_number}-OVR-L{level}",
                 notes=f"Level {level} override for {consultant.username}",
                 override_level=level,
