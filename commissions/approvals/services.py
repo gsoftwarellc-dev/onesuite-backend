@@ -103,11 +103,21 @@ class ApprovalDecisionService:
     def approve(commission, actor, notes=""):
         ApprovalStateService.validate_transition(commission, 'approved')
         
-        # Security: Only assigned approver or Admin can approve
+        # Security: Only assigned approver, Manager (Hierarchy), or Admin can approve
         approval_record = getattr(commission, 'approval', None)
         is_admin = actor.is_staff or actor.groups.filter(name='Admins').exists()
         
-        if not is_admin and (not approval_record or approval_record.assigned_approver != actor):
+        # Check hierarchy permission
+        from hierarchy.models import ReportingLine
+        is_hierarchy_manager = ReportingLine.objects.filter(
+            manager=actor, 
+            consultant=commission.consultant,
+            is_active=True
+        ).exists()
+        
+        is_explicit_manager = commission.manager == actor
+        
+        if not is_admin and not is_hierarchy_manager and not is_explicit_manager and (not approval_record or approval_record.assigned_approver != actor):
             raise ApprovalError("You are not authorized to approve this commission.")
             
         history = ApprovalStateService.record_action(
@@ -133,11 +143,21 @@ class ApprovalDecisionService:
             
         ApprovalStateService.validate_transition(commission, 'rejected')
         
-        # Security: Only assigned approver or Admin can reject
+        # Security: Only assigned approver, Manager, or Admin can reject
         approval_record = getattr(commission, 'approval', None)
         is_admin = actor.is_staff or actor.groups.filter(name='Admins').exists()
         
-        if not is_admin and (not approval_record or approval_record.assigned_approver != actor):
+        # Check hierarchy permission
+        from hierarchy.models import ReportingLine
+        is_hierarchy_manager = ReportingLine.objects.filter(
+            manager=actor, 
+            consultant=commission.consultant,
+            is_active=True
+        ).exists()
+        
+        is_explicit_manager = commission.manager == actor
+        
+        if not is_admin and not is_hierarchy_manager and not is_explicit_manager and (not approval_record or approval_record.assigned_approver != actor):
             raise ApprovalError("You are not authorized to reject this commission.")
             
         return ApprovalStateService.record_action(
