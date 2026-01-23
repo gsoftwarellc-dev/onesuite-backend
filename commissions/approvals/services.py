@@ -90,6 +90,23 @@ class ApprovalSubmissionService:
             approval_record.assigned_role = 'MANAGER'
             approval_record.save()
             
+        # Notify Approver
+        if approval_record.assigned_approver:
+            from notifications.services import NotificationService
+            from notifications.models import EventType
+            
+            NotificationService.send(
+                event_type=EventType.COMM_001,
+                recipient=approval_record.assigned_approver,
+                source_model='Commission',
+                source_id=commission.id,
+                metadata={
+                    'reference': commission.reference_number,
+                    'amount': str(commission.calculated_amount),
+                    'consultant': commission.consultant.username
+                }
+            )
+
         return ApprovalStateService.record_action(
             commission, 'SUBMIT', actor, 'submitted', notes
         )
@@ -132,6 +149,21 @@ class ApprovalDecisionService:
              )
              for ovr in overrides:
                  ApprovalDecisionService.approve(ovr, actor, f"Auto-approved via base {commission.reference_number}")
+
+        # Notify Consultant
+        from notifications.services import NotificationService
+        from notifications.models import EventType
+        
+        NotificationService.send(
+            event_type=EventType.COMM_002,
+            recipient=commission.consultant,
+            source_model='Commission',
+            source_id=commission.id,
+            metadata={
+                'reference': commission.reference_number,
+                'status': 'Approved'
+            }
+        )
                  
         return history
 
@@ -159,6 +191,22 @@ class ApprovalDecisionService:
         
         if not is_admin and not is_hierarchy_manager and not is_explicit_manager and (not approval_record or approval_record.assigned_approver != actor):
             raise ApprovalError("You are not authorized to reject this commission.")
+            
+        # Notify Consultant
+        from notifications.services import NotificationService
+        from notifications.models import EventType
+        
+        NotificationService.send(
+            event_type=EventType.COMM_003,
+            recipient=commission.consultant,
+            source_model='Commission',
+            source_id=commission.id,
+            metadata={
+                'reference': commission.reference_number,
+                'status': 'Rejected',
+                'reason': rejection_reason
+            }
+        )
             
         return ApprovalStateService.record_action(
             commission, 'REJECT', actor, 'rejected', rejection_reason
