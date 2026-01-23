@@ -242,6 +242,10 @@ def my_team_commissions(request):
     ).values_list('consultant_id', flat=True)
     
     # Aggregate commissions by consultant
+    # Pre-fetch users to avoid N+1
+    user_objects = User.objects.filter(id__in=team_members)
+    users_map = {u.id: u for u in user_objects}
+    
     team_data = []
     for consultant_id in team_members:
         # Base query for this consultant
