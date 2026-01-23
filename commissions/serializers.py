@@ -121,12 +121,21 @@ class CommissionReadSerializer(serializers.ModelSerializer):
     created_by = UserBasicSerializer(read_only=True)
     approved_by = UserBasicSerializer(read_only=True)
     approval = serializers.SerializerMethodField()
+    client_name = serializers.SerializerMethodField()
     
     def get_approval(self, obj):
         try:
             return CommissionApprovalSerializer(obj.approval).data
         except (CommissionApproval.DoesNotExist, AttributeError):
             return None
+
+    def get_client_name(self, obj):
+        # Fallback to parent commission client name if empty (for overrides)
+        if obj.client_name:
+            return obj.client_name
+        if obj.parent_commission and obj.parent_commission.client_name:
+            return obj.parent_commission.client_name
+        return obj.reference_number # Last resort fallback
     
     class Meta:
         model = Commission
@@ -154,6 +163,7 @@ class CommissionReadSerializer(serializers.ModelSerializer):
             'paid_at',
             'rejection_reason',
             'approval',
+            'client_name',
         ]
         read_only_fields = fields
 
@@ -166,6 +176,14 @@ class CommissionListSerializer(serializers.ModelSerializer):
     """
     consultant = UserBasicSerializer(read_only=True)
     manager = UserBasicSerializer(read_only=True)
+    client_name = serializers.SerializerMethodField()
+    
+    def get_client_name(self, obj):
+        if obj.client_name:
+            return obj.client_name
+        if obj.parent_commission and obj.parent_commission.client_name:
+            return obj.parent_commission.client_name
+        return obj.reference_number
     
     class Meta:
         model = Commission
@@ -181,6 +199,7 @@ class CommissionListSerializer(serializers.ModelSerializer):
             'reference_number',
             'override_level',
             'created_at',
+            'client_name',
         ]
         read_only_fields = fields
 
