@@ -10,6 +10,7 @@ urlpatterns = [
     # Commission queries
     path('my-commissions/', views.my_commissions, name='my-commissions'),
     path('my-team/', views.my_team_commissions, name='my-team-commissions'),
+    path('my-payslips/', views.my_payslips, name='my-payslips'),
     path('', views.all_commissions, name='all-commissions'),  # Admin only
     path('<int:pk>/', views.commission_detail, name='commission-detail'),
     

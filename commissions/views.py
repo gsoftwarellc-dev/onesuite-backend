@@ -268,6 +268,52 @@ def my_team_commissions(request):
 
 
 @api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def my_payslips(request):
+    """
+    GET /api/commissions/my-payslips/
+    
+    Returns monthly aggregation of PAID commissions.
+    Acting as a pseudo-payslip until full payroll module is built.
+    """
+    from django.db.models.functions import TruncMonth
+    from django.db.models import Sum, Count
+    
+    # Filter for PAID commissions only
+    queryset = Commission.objects.filter(
+        consultant=request.user,
+        state='paid'
+    )
+    
+    # Group by Payment Month (paid_at)
+    # If paid_at is null (shouldn't be for paid), fallback to updated_at
+    from django.db.models import F
+    from django.db.models.functions import Coalesce
+    
+    summary = queryset.annotate(
+        payment_date=Coalesce('paid_at', 'updated_at')
+    ).annotate(
+        month=TruncMonth('payment_date')
+    ).values('month').annotate(
+        total_amount=Sum('calculated_amount'),
+        count=Count('id')
+    ).order_by('-month')
+    
+    data = []
+    for item in summary:
+        if item['month']:
+            data.append({
+                "month_label": item['month'].strftime("%B %Y"), # e.g. December 2025
+                "month_id": item['month'].strftime("%Y-%m"),    # e.g. 2025-12
+                "amount": str(item['total_amount']),
+                "count": item['count'],
+                "status": "Available",
+                "generated_on": item['month'].date()
+            })
+            
+    return Response(data)
+
+@api_view(['GET'])
 @permission_classes([IsAdminUser])
 def all_commissions(request):
     """
