@@ -244,21 +244,32 @@ def my_team_commissions(request):
     # Aggregate commissions by consultant
     team_data = []
     for consultant_id in team_members:
+        # Base query for this consultant
         commissions = Commission.objects.filter(
             consultant_id=consultant_id,
             commission_type='base'
         )
         
+        # Calculate stats
+        total_sales_volume = commissions.aggregate(Sum('sale_amount'))['sale_amount__sum'] or 0
+        total_commission = commissions.aggregate(Sum('calculated_amount'))['calculated_amount__sum'] or 0
+        pending_qs = commissions.filter(state='submitted')
+        pending_count = pending_qs.count()
+        pending_val = pending_qs.aggregate(Sum('calculated_amount'))['calculated_amount__sum'] or 0
+        
         team_data.append({
             "consultant": {
                 "id": consultant_id,
-                "username": User.objects.get(id=consultant_id).username
+                "username": users_map.get(consultant_id).username if consultant_id in users_map else "Unknown"
             },
-            "total_commissions": commissions.count(),
-            "total_amount": str(commissions.aggregate(Sum('calculated_amount'))['calculated_amount__sum'] or 0),
-            "pending_amount": str(commissions.filter(state='submitted').aggregate(Sum('calculated_amount'))['calculated_amount__sum'] or 0),
-            "approved_amount": str(commissions.filter(state='approved').aggregate(Sum('calculated_amount'))['calculated_amount__sum'] or 0),
-            "paid_amount": str(commissions.filter(state='paid').aggregate(Sum('calculated_amount'))['calculated_amount__sum'] or 0),
+            # Metrics
+            "total_sales_volume": str(total_sales_volume),      # Gross Revenue (Policy Value)
+            "total_commission_earned": str(total_commission),   # Actual Earnings
+            "pending_count": pending_count,                     # Number of items to review
+            "pending_value": str(pending_val),                  # Potential earnings pending
+            
+            # Legacy/Debug fields (optional)
+            "total_commissions_count": commissions.count(),
         })
     
     return Response({
