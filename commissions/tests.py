@@ -142,7 +142,8 @@ class CommissionCreationServiceTest(TestCase):
             commission_rate=Decimal('5.00'),
             reference_number='TEST-001',
             notes='Test sale',
-            created_by=self.admin
+            created_by=self.admin,
+            client_name='Test Client'
         )
         
         # Should create 1 base + 1 override
@@ -156,12 +157,14 @@ class CommissionCreationServiceTest(TestCase):
         self.assertEqual(base.calculated_amount, Decimal('50.00'))
         self.assertEqual(base.consultant, self.consultant)
         self.assertIsNone(base.manager)
+        self.assertEqual(base.client_name, 'Test Client')
         
         # Verify override commission
         override = result['override_commissions'][0]
         self.assertEqual(override.commission_type, 'override')
         self.assertEqual(override.manager, self.manager)
         self.assertEqual(override.parent_commission, base)
+        self.assertEqual(override.client_name, 'Test Client')
     
     def test_duplicate_reference_number_fails(self):
         """Test that duplicate reference numbers are prevented"""
@@ -172,7 +175,8 @@ class CommissionCreationServiceTest(TestCase):
             gst_rate=Decimal('0.00'),
             commission_rate=Decimal('5.00'),
             reference_number='TEST-DUP',
-            created_by=self.admin
+            created_by=self.admin,
+            client_name='Test Client'
         )
         
         # Try to create duplicate
@@ -184,7 +188,8 @@ class CommissionCreationServiceTest(TestCase):
                 gst_rate=Decimal('0.00'),
                 commission_rate=Decimal('5.00'),
                 reference_number='TEST-DUP',
-                created_by=self.admin
+                created_by=self.admin,
+                client_name='Test Client'
             )
 
 
