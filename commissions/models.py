@@ -105,6 +105,12 @@ class Commission(models.Model):
         blank=True,
         help_text="Additional notes or context"
     )
+
+    client_name = models.CharField(
+        max_length=255,
+        blank=True,
+        help_text="Name of the client/customer"
+    )
     
     # Future: Product support
     # product = models.ForeignKey('products.Product', null=True, blank=True, on_delete=models.SET_NULL)
