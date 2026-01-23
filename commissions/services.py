@@ -169,32 +169,11 @@ class CommissionCreationService:
         commission_rate,
         reference_number,
         notes='',
-        created_by=None
+        created_by=None,
+        client_name=''
     ):
         """
         Create base commission and automatically create override commissions.
-        
-        This is the main entry point for commission creation.
-        
-        Args:
-            consultant (User): Who earned the commission
-            transaction_date (date): When the sale occurred
-            sale_amount (Decimal): Sale amount
-            gst_rate (Decimal): GST percentage
-            commission_rate (Decimal): Commission percentage
-            reference_number (str): Unique transaction reference
-            notes (str): Optional notes
-            created_by (User): Who created this record
-        
-        Returns:
-            dict: {
-                'base_commission': Commission instance,
-                'override_commissions': list of Commission instances,
-                'total_created': int
-            }
-        
-        Raises:
-            ValidationError: If validation fails
         """
         # Calculate base commission amount
         calculated_amount = CommissionCalculationService.calculate_base_commission(
@@ -215,7 +194,8 @@ class CommissionCreationService:
             state='submitted',
             reference_number=reference_number,
             notes=notes,
-            created_by=created_by
+            created_by=created_by,
+            client_name=client_name
         )
         
         # Resolve override chain
@@ -245,7 +225,8 @@ class CommissionCreationService:
                 notes=f"Level {level} override for {consultant.username}",
                 override_level=level,
                 parent_commission=base_commission,
-                created_by=created_by
+                created_by=created_by,
+                client_name=client_name
             )
             override_commissions.append(override_commission)
         

@@ -77,7 +77,8 @@ def create_commission(request):
             commission_rate=serializer.validated_data['commission_rate'],
             reference_number=serializer.validated_data['reference_number'],
             notes=serializer.validated_data.get('notes', ''),
-            created_by=request.user
+            created_by=request.user,
+            client_name=serializer.validated_data.get('client_name', '')
         )
         
         # Serialize response
@@ -132,7 +133,8 @@ def bulk_create_commissions(request):
                 commission_rate=comm_data['commission_rate'],
                 reference_number=comm_data['reference_number'],
                 notes=comm_data.get('notes', ''),
-                created_by=request.user
+                created_by=request.user,
+                client_name=comm_data.get('client_name', '')
             )
             
             results.append({
