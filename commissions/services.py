@@ -248,6 +248,16 @@ class CommissionCreationService:
             )
             override_commissions.append(override_commission)
         
+        # Auto-submit the base commission so it appears in manager's pending approvals
+        # This moves it from 'draft' to 'submitted' state
+        base_commission.state = 'submitted'
+        base_commission.save()
+        
+        # Also submit override commissions
+        for override_comm in override_commissions:
+            override_comm.state = 'submitted'
+            override_comm.save()
+        
         return {
             'base_commission': base_commission,
             'override_commissions': override_commissions,
