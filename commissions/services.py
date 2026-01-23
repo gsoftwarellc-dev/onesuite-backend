@@ -17,7 +17,7 @@ from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from datetime import datetime, timedelta
 
-from .models import Commission
+from .models import Commission, CommissionApproval, ApprovalHistory
 from hierarchy.models import ReportingLine
 
 User = get_user_model()
@@ -202,6 +202,7 @@ class CommissionCreationService:
         )
         
         # Create base commission
+        desc_consultant = consultant # store for history
         base_commission = Commission.objects.create(
             commission_type='base',
             consultant=consultant,
@@ -247,6 +248,27 @@ class CommissionCreationService:
                 created_by=created_by
             )
             override_commissions.append(override_commission)
+        
+        # Create Approval Record for Base Commission
+        # Assign to direct manager (first in chain) or Admin if no manager
+        direct_manager = override_chain[0][0] if override_chain else None
+        
+        if direct_manager:
+            approval = CommissionApproval.objects.create(
+                commission=base_commission,
+                assigned_approver=direct_manager,
+                assigned_role='manager'
+            )
+            
+            # Log the submission action
+            ApprovalHistory.objects.create(
+                approval_record=approval,
+                action='SUBMIT',
+                actor=desc_consultant if created_by is None else created_by,
+                from_state='draft',
+                to_state='submitted',
+                notes=notes
+            )
         
         # Auto-submit the base commission so it appears in manager's pending approvals
         # This moves it from 'draft' to 'submitted' state
