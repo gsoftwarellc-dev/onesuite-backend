@@ -28,36 +28,36 @@ class PendingApprovalsListView(views.APIView):
     def get(self, request):
         user = request.user
         
-        # Admins see everything submitted
-        if user.is_staff or user.groups.filter(name='Admins').exists():
-            queryset = Commission.objects.filter(state='submitted')
-        else:
-        # Status Filter Logic
+        # Status Filter Logic (Default to 'submitted' for backwards compatibility)
         status_param = request.query_params.get('status', 'submitted')
         
-        # Managers see what is assigned to them OR what belongs to their team
-        from django.db.models import Q
-        from hierarchy.models import ReportingLine
-        
-        # 1. Direct assignments via Approval record
-        filter_q = Q(approval__assigned_approver=user)
-        
-        # 2. Team members (fallback based on hierarchy)
-        # Find all consultants who report to this user
-        team_member_ids = ReportingLine.objects.filter(
-            manager=user, 
-            is_active=True
-        ).values_list('consultant_id', flat=True)
-        
-        if team_member_ids:
-            filter_q |= Q(consultant_id__in=team_member_ids)
+        # 1. Base Queryset Construction
+        if user.is_staff or user.groups.filter(name='Admins').exists():
+            # Admins see everything (filtered below)
+            queryset = Commission.objects.all()
+        else:
+            # Managers see what is assigned to them OR what belongs to their team
+            from django.db.models import Q
+            from hierarchy.models import ReportingLine
             
-        # 3. Also include commissions where user is explicitly set as 'manager' field (for overrides)
-        filter_q |= Q(manager=user)
+            # A. Direct assignments via Approval record
+            filter_q = Q(approval__assigned_approver=user)
+            
+            # B. Team members (fallback based on hierarchy)
+            team_member_ids = ReportingLine.objects.filter(
+                manager=user, 
+                is_active=True
+            ).values_list('consultant_id', flat=True)
+            
+            if team_member_ids:
+                filter_q |= Q(consultant_id__in=team_member_ids)
+                
+            # C. Also include commissions where user is explicitly set as 'manager' field
+            filter_q |= Q(manager=user)
+            
+            queryset = Commission.objects.filter(filter_q).distinct()
         
-        queryset = Commission.objects.filter(filter_q).distinct()
-        
-        # Apply Status Filter
+        # 2. Apply Status Filter
         if status_param != 'all':
             queryset = queryset.filter(state=status_param)
             
