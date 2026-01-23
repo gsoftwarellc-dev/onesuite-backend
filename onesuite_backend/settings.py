@@ -101,7 +101,7 @@ if DB_ENGINE == 'django.db.backends.postgresql':
             'PORT': config('DB_PORT', default='5432'),
             'OPTIONS': {
                 'sslmode': 'require',
-            },
+            } if not config('DB_HOST', '').startswith('/') else {},
         }
     }
 else:
