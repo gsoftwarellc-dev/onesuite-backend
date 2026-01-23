@@ -233,10 +233,8 @@ def my_team_commissions(request):
     )
     
     if not has_manager_access:
-        return Response(
-            {"detail": "You do not have team members."},
-            status=status.HTTP_403_FORBIDDEN
-        )
+        # Return empty list instead of error
+        return Response([])
     
     # Get team members
     team_members = ReportingLine.objects.filter(
